@@ -1,4 +1,5 @@
 from django.contrib import admin
+
 from argue_football.community import models as v2_models
 
 # Register your models here.

@@ -1,6 +1,4 @@
-"""
-Base settings to build other settings files upon.
-"""
+# Base settings to build other settings files upon.
 from pathlib import Path
 
 import environ
@@ -80,14 +78,13 @@ THIRD_PARTY_APPS = [
     "rest_framework.authtoken",
     "corsheaders",
     "drf_spectacular",
-    "django_rest_passwordreset"
+    "django_rest_passwordreset",
 ]
 
 LOCAL_APPS = [
     "argue_football.users",
     "argue_football.posts",
     "argue_football.community",
-   
     # Your stuff: custom apps go here
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
@@ -178,7 +175,6 @@ TEMPLATES = [
         "DIRS": [str(APPS_DIR / "templates")],
         # https://docs.djangoproject.com/en/dev/ref/settings/#app-dirs
         "APP_DIRS": True,
-        
         "OPTIONS": {
             # https://docs.djangoproject.com/en/dev/ref/settings/#template-context-processors
             "context_processors": [
@@ -350,7 +346,7 @@ SPECTACULAR_SETTINGS = {
 # ------------------------------------------------------------------------------
 
 
-""" SMTP Settings """
+# SMTP Settings
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "smtp.gmail.com"
 EMAIL_USE_TLS = True

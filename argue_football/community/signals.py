@@ -9,7 +9,7 @@
 #     if created:
 #         account = Account.objects.get(id=instance.receiver.id)
 #         user = account.owner
-       
+
 #         v2_models.Friends.objects.create(
 #             owner = user,
 #             account = instance.receiver,

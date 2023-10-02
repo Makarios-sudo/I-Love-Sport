@@ -4,9 +4,11 @@ from django.contrib import admin
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 from django.http import JsonResponse
 from django.urls import include, path
+
 # from django.views import defaults as default_views
 # from django.views.generic import TemplateView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+
 # from rest_framework.authtoken.views import obtain_auth_token
 
 VERSION_1 = "v1"
@@ -16,11 +18,10 @@ SERVICE_PREFIX = "argue_football"
 def health(request):
     return JsonResponse({"detail": "ok"}, content_type="application/json")
 
+
 urlpatterns = [
-   
     path(f"{SERVICE_PREFIX}/{VERSION_1}/{settings.ADMIN_URL}", admin.site.urls),
     path(f"{SERVICE_PREFIX}{VERSION_1}/health/", health, name=f"health-{SERVICE_PREFIX}"),
-    
     # User management
     # path("users/", include("argue_football.users.urls", namespace="users")),
     path("accounts/", include("allauth.urls")),
@@ -37,8 +38,6 @@ urlpatterns += [
     path(f"{SERVICE_PREFIX}/{VERSION_1}/", include("argue_football.users.urls")),
     path(f"{SERVICE_PREFIX}/{VERSION_1}/", include("argue_football.posts.urls")),
     path(f"{SERVICE_PREFIX}/{VERSION_1}/", include("argue_football.community.urls")),
-    
-    
     # DRF auth token
     # path("auth-token/", obtain_auth_token),
     path("api/schema/", SpectacularAPIView.as_view(), name="api-schema"),
@@ -47,7 +46,7 @@ urlpatterns += [
         SpectacularSwaggerView.as_view(url_name="api-schema"),
         name="api-docs",
     ),
-]  + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 if settings.DEBUG:
     # This allows the error pages to be debugged during development, just visit
@@ -70,7 +69,7 @@ if settings.DEBUG:
     #     ),
     #     path("500/", default_views.server_error),
     # ]
-   
+
     if "debug_toolbar" in settings.INSTALLED_APPS:
         import debug_toolbar
 
