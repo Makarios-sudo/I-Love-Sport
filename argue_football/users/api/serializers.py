@@ -1,6 +1,8 @@
 from rest_framework import serializers
 
+from argue_football.community.models import Friends
 from argue_football.posts import models as v2_models
+from argue_football.posts.api import serializers as v2_serializer
 from argue_football.users.models import Account, User
 from argue_football.utilities.utils import OPT_EXPIRE, OTP, OTP_MAX_TRY
 
@@ -115,15 +117,12 @@ class AccountSerializer:
             model = Account
             fields = ["id", "owner", "extradata", "metadata", "active", "created_at", "updated_at"]
 
-    class Public(serializers.Serializer):
-        full_name = serializers.CharField()
-        profile_picture = serializers.CharField()
-        id = serializers.UUIDField
-
     class PublicRetrieve(serializers.ModelSerializer):
         profile_picture = serializers.SerializerMethodField()
 
         def get_profile_picture(self, obj: Account):
+            if not obj.extradata:
+                return None
             return obj.extradata.get("avatar")
 
         class Meta:
@@ -171,5 +170,100 @@ class AccountSerializer:
                 id__in=[interest.id for interest in club_interests_ids]
             ).exists():
                 raise serializers.ValidationError("One or more ClubInterest IDs do not exist.")
-
             return club_interests_ids
+
+    class PublicRetrieveView(serializers.ModelSerializer):
+        profile_picture = serializers.SerializerMethodField()
+        about = serializers.SerializerMethodField()
+        contacts = serializers.SerializerMethodField()
+        business = serializers.SerializerMethodField()
+        club_interests = serializers.SerializerMethodField()
+        posts = serializers.SerializerMethodField()
+        followers = serializers.SerializerMethodField()
+        following = serializers.SerializerMethodField()
+        mutual = serializers.SerializerMethodField()
+
+        def get_followers(self, obj: Account):
+            qs = Friends.objects.filter(owner=obj.owner, account=obj).first()
+
+            if not qs or not qs.followers.exists():
+                return None
+
+            return AccountSerializer.PublicRetrieve(qs.followers.all(), many=True).data[:10]
+
+        def get_following(self, obj: Account):
+            qs = Friends.objects.filter(owner=obj.owner, account=obj).first()
+
+            if not qs or not qs.following.exists():
+                return None
+
+            return AccountSerializer.PublicRetrieve(qs.following.all(), many=True).data[:10]
+
+        def get_posts(self, obj: Account):
+            posts = v2_serializer.PostSerializer.PublicRetreive(obj.get_posts(), many=True).data[:10]
+            if not posts:
+                return None
+            return posts
+
+        def get_contacts(self, obj: Account):
+            keys_to_exclude = ["nick_name", "Bio", "gender", "avatar"]
+            filtered_extradata = {key: value for key, value in obj.extradata.items() if key not in keys_to_exclude}
+            return filtered_extradata
+
+        def get_business(self, obj: Account):
+            if not obj.metadata:
+                return None
+            return obj.metadata
+
+        def get_profile_picture(self, obj: Account):
+            if not obj.extradata.get("avatar"):
+                return None
+            return obj.extradata.get("avatar")
+
+        def get_about(self, obj: Account):
+            if not obj.extradata.get("Bio"):
+                return None
+            return obj.extradata.get("Bio")
+
+        def get_club_interests(self, obj: Account):
+            club_interests = v2_serializer.ClubInterestSerializer.BaseRetrieve(
+                obj.club_interests.all(), many=True
+            ).data[:10]
+            if not club_interests:
+                return None
+            return club_interests
+
+        def get_mutual(self, obj: Account):
+            request_user = self.context.get("request_user_account")
+            param_account_qs = obj.friends.first()
+            request_user_account_qs = request_user.friends.first()
+
+            if not param_account_qs or not request_user_account_qs:
+                return None
+
+            mutuals = request_user_account_qs.followers.filter(id__in=param_account_qs.followers.all())
+
+            if not mutuals:
+                return None
+
+            return AccountSerializer.PublicRetrieve(mutuals, many=True).data[:10]
+
+        class Meta:
+            model = Account
+            fields = [
+                "id",
+                "full_name",
+                "profile_picture",
+                "about",
+                "contacts",
+                "business",
+                "clubs_interest_count",
+                "club_interests",
+                "posts_count",
+                "posts",
+                "followers_count",
+                "followers",
+                "following_count",
+                "following",
+                "mutual",
+            ]

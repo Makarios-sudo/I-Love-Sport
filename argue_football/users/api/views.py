@@ -11,7 +11,8 @@ from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from argue_football.posts.api import serializers as v2_serializers
+# from argue_football.posts.api import serializers as v2_serializers
+from argue_football.posts.api import serializers as v2_postApp_serializer
 from argue_football.users import custom_exceptions
 from argue_football.users.api.serializers import AccountSerializer, RegisterSerializer, UserSerializer
 from argue_football.users.models import Account, User
@@ -229,7 +230,7 @@ class AccountView(viewsets.ModelViewSet):
         return Response(
             {
                 "message": "Interest Added Successfully",
-                "data": v2_serializers.ClubInterestSerializer.BaseRetrieve(interest_ids, many=True).data,
+                "data": v2_postApp_serializer.ClubInterestSerializer.BaseRetrieve(interest_ids, many=True).data,
             },
             status=status.HTTP_200_OK,
         )

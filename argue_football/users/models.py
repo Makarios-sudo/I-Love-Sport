@@ -106,6 +106,31 @@ class Account(BaseModelMixin):
             return " first name or last name was not provided "
         return f"{self.first_name} {self.last_name}"
 
+    @property
+    def clubs_interest_count(self) -> int:
+        return self.club_interests.all().count()
+
+    @property
+    def posts_count(self):
+        return self.posts.count()
+
+    @property
+    def followers_count(self):
+        return self.friends.filter(followers__isnull=False).count()
+
+    @property
+    def following_count(self):
+        return self.friends.filter(following__isnull=False).count()
+
+    def get_posts(self):
+        return self.posts.order_by("-created_at")[:10]
+
+    def get_folllowers(self):
+        return self.friends.all()[:10]
+
+    def get_folllowing(self):
+        return self.friends.all()[:10]
+
     def verified(self: "Account"):
         return self.isverified is True
 
@@ -150,5 +175,5 @@ class Account(BaseModelMixin):
         unblocking.blocked.remove(to_unblock_account)
         return unblocking
 
-    def followers(self: "Account", *args, **kwargs):
-        return v2_models.Friends.objects.get(owner=self.owner, account=self)
+    # def followers(self: "Account", *args, **kwargs):
+    #     return self.

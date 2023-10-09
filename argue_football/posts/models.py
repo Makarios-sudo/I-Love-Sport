@@ -23,10 +23,7 @@ class ClubInterest(BaseModelMixin):
 class Post(BaseModelMixin):
     owner = models.ForeignKey("users.User", on_delete=models.CASCADE, null=True, blank=True)
     account = models.ForeignKey(
-        "users.Account",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
+        "users.Account", on_delete=models.SET_NULL, null=True, blank=True, related_name="posts"
     )
     body = models.TextField(_("Body"), blank=False, null=False, db_index=True)
     thumbnail = models.JSONField(_("Thumbnail"), default=dict, blank=True, null=True, db_index=True)

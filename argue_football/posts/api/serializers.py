@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from argue_football.posts import models as v2_models
-from argue_football.users.api import serializers as v2_serializers
+from argue_football.users.api import serializers as v2_userApp_serializer
 
 
 class ClubInterestSerializer:
@@ -18,7 +18,7 @@ class ClubInterestSerializer:
 
 class PostSerializer:
     class BaseRetrieve(serializers.ModelSerializer):
-        account = v2_serializers.AccountSerializer.PublicRetrieve()
+        account = v2_userApp_serializer.AccountSerializer.PublicRetrieve()
         comments_count = serializers.IntegerField(read_only=True)
         likes_count = serializers.IntegerField(read_only=True)
         reposts_count = serializers.IntegerField(read_only=True)
@@ -45,7 +45,7 @@ class PostSerializer:
             fields = ["body", "thumbnail", "created_at"]
 
     class List(serializers.ModelSerializer):
-        account = v2_serializers.AccountSerializer.PublicRetrieve()
+        account = v2_userApp_serializer.AccountSerializer.PublicRetrieve()
         comments_count = serializers.IntegerField(read_only=True)
         likes_count = serializers.IntegerField(read_only=True)
         reposts_count = serializers.IntegerField(read_only=True)
@@ -75,6 +75,22 @@ class PostSerializer:
             model = v2_models.Post
             fields = [
                 "account",
+                "body",
+                "thumbnail",
+                "likes_count",
+                "likes",
+                "reposts_count",
+                "bookmarks_count",
+                "id",
+                "comments_count",
+                "comments",
+                "created_at",
+            ]
+
+    class PublicRetreive(List):
+        class Meta:
+            model = v2_models.Post
+            fields = [
                 "body",
                 "thumbnail",
                 "likes_count",
@@ -117,14 +133,14 @@ class PostActivitySerializer:
             fields = ["post"]
 
     class PeopleWhoLikes(serializers.ModelSerializer):
-        account = v2_serializers.AccountSerializer.PublicRetrieve()
+        account = v2_userApp_serializer.AccountSerializer.PublicRetrieve()
 
         class Meta:
             model = v2_models.PostActivity
             fields = ["account"]
 
     class Comments(serializers.ModelSerializer):
-        account = v2_serializers.AccountSerializer.PublicRetrieve()
+        account = v2_userApp_serializer.AccountSerializer.PublicRetrieve()
         response = serializers.SerializerMethodField()
         liked_comment = serializers.SerializerMethodField()
 

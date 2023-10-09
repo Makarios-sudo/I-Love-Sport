@@ -7,10 +7,7 @@ from argue_football.utilities.utils import BaseModelMixin, FriendRequestStatus, 
 class Friends(BaseModelMixin):
     owner = models.ForeignKey("users.User", on_delete=models.CASCADE, null=True, blank=True)
     account = models.ForeignKey(
-        "users.Account",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
+        "users.Account", on_delete=models.SET_NULL, null=True, blank=True, related_name="friends"
     )
     followers = models.ManyToManyField("users.Account", blank=True, db_index=True, related_name="my_followers")
     following = models.ManyToManyField("users.Account", blank=True, db_index=True, related_name="Iam_following")
@@ -59,10 +56,6 @@ class Friends(BaseModelMixin):
     def get_blocked(self) -> list:
         return self.blocked.all().count()
 
-    @property
-    def get_new_requests(self) -> list:
-        return self.new_request
-
 
 class FriendRequest(BaseModelMixin):
     sender = models.ForeignKey(
@@ -82,8 +75,8 @@ class FriendRequest(BaseModelMixin):
         return self.id
 
     @classmethod
-    def get_pending_request_count(cls):
-        return cls.objects.filter(status=FriendRequestStatus.PENDING).count()
+    def pending_requests_count(cls, receiver):
+        return cls.objects.filter(receiver=receiver, status=FriendRequestStatus.PENDING).count()
 
     def delete_send(self) -> bool:
         pass

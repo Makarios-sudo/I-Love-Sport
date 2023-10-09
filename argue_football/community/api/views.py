@@ -61,7 +61,7 @@ class FriendsViewSet(viewsets.ModelViewSet):
         return self.get_paginated_response(v2_serializers.FriendsSerializer.Followers(qs, many=True).data)
 
     @action(methods=["GET"], detail=False, permission_classes=[IsAuthenticated])
-    def following(self, request, *args, **kwargs):
+    def followings(self, request, *args, **kwargs):
         user: User = self.request.user
         account: Account = getattr(user, "accounts").first()
 
@@ -87,7 +87,7 @@ class FriendsViewSet(viewsets.ModelViewSet):
         return self.get_paginated_response(v2_serializers.FriendsSerializer.Blocked(qs, many=True).data)
 
     @action(methods=["GET"], detail=False, permission_classes=[IsAuthenticated])
-    def new_request(self, request, *args, **kwargs):
+    def new_requests(self, request, *args, **kwargs):
         user: User = self.request.user
         account: Account = getattr(user, "accounts").first()
 
@@ -97,7 +97,35 @@ class FriendsViewSet(viewsets.ModelViewSet):
         friends_qs = make_distinct(v2_model.FriendRequest.objects.filter(receiver=account, status="PENDING"))
 
         qs = self.paginate_queryset(friends_qs)
-        return self.get_paginated_response(v2_serializers.FriendRequestSerializer.ListRequest(qs, many=True).data)
+        return self.get_paginated_response(
+            v2_serializers.FriendRequestSerializer.ListRequest(
+                qs,
+                many=True,
+            ).data
+        )
+
+    @action(methods=["GET"], detail=True, permission_classes=[IsAuthenticated])
+    def view_account(self, request, *args, **kwargs):
+        user: User = self.request.user
+        account: Account = getattr(user, "accounts").first()
+        account_to_view = get_object_or_404(Account, id=kwargs.get("pk"))
+
+        if not account.isverified or not account_to_view.isverified:
+            raise custom_exceptions.Forbidden("You do not have permission to perform this action.")
+
+        try:
+            qs = v2_model.Friends.objects.get(owner=user, account=account)
+        except v2_model.Friends.DoesNotExist:
+            raise custom_exceptions.Forbidden("You do not have permission to perform this action.")
+
+        if account_to_view not in qs.followers.all() and account_to_view not in qs.following.all():
+            raise custom_exceptions.Forbidden("You do not have permission to perform this action.")
+
+        return Response(
+            AccountSerializer.PublicRetrieveView(
+                account_to_view, context={"account_to_view": account_to_view, "request_user_account": account}
+            ).data
+        )
 
     @action(methods=["POST"], detail=True, permission_classes=[IsAuthenticated])
     def send_request(self, request, *args, **kwargs):

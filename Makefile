@@ -34,7 +34,7 @@ pre-commit:
 
 # Run tests locally
 test-local:
-	docker-compose -f local.yml run --rm django sh -c "coverage run -m pytest && coverage report"
+	sudo docker-compose -f local.yml run --rm django sh -c "coverage run -m pytest && coverage report"
 
 # Coverage Report
 coverage-report:
