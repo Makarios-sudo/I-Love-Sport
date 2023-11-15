@@ -246,6 +246,7 @@ class FriendsViewSet(viewsets.ModelViewSet):
             raise custom_exceptions.Forbidden("You can only unfollow an account that you are following.")
 
         qs.following.remove(to_unfollow)
+        
         return Response(f"You have Unfollowed {to_unfollow.full_name}")
 
     @action(methods=["GET"], detail=False, permission_classes=[IsAuthenticated])

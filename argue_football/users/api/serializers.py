@@ -200,7 +200,7 @@ class AccountSerializer:
             return AccountSerializer.PublicRetrieve(qs.following.all(), many=True).data[:10]
 
         def get_posts(self, obj: Account):
-            posts = v2_serializer.PostSerializer.PublicRetreive(obj.get_posts(), many=True).data[:10]
+            posts = v2_serializer.PostSerializer.PublicRetreive(obj.get_posts(), many=True).data[:5]
             if not posts:
                 return None
             return posts
@@ -228,7 +228,7 @@ class AccountSerializer:
         def get_club_interests(self, obj: Account):
             club_interests = v2_serializer.ClubInterestSerializer.BaseRetrieve(
                 obj.club_interests.all(), many=True
-            ).data[:10]
+            ).data[:5]
             if not club_interests:
                 return None
             return club_interests

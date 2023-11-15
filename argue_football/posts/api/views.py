@@ -3,7 +3,7 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
-
+from rest_framework import status
 from argue_football.posts import models as v2_model
 from argue_football.posts.api import serializers as v2_serializers
 from argue_football.users import custom_exceptions
@@ -15,10 +15,21 @@ class ClubInterestViewSet(viewsets.ModelViewSet):
     queryset = v2_model.ClubInterest.objects.all()
     serializer_class = v2_serializers.ClubInterestSerializer.BaseRetrieve
     permission_classes = [IsAuthenticated | IsAdminUser]
+    http_method_names = ['get', 'post']
 
-    def perform_create(self, serializer):
-        serializer.save()
+    def create(self, request, *args, **kwargs):
+        user: User = self.request.user
 
+        if not user.is_superuser:
+            return Response(
+                data={"detail": "You do not have permission to perform this action."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+            
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return Response(data=serializer.data)
+        
 
 class PostViewSet(viewsets.ModelViewSet):
     queryset = v2_model.Post.objects.all()
@@ -152,7 +163,12 @@ class PostViewSet(viewsets.ModelViewSet):
             raise custom_exceptions.Forbidden("You can not bookmark your own post.")
 
         bookmarked = make_distinct(
-            v2_model.PostActivity.objects.filter(owner=user, account=account, post=post, is_bookmark=True)
+            v2_model.PostActivity.objects.filter(
+                owner=user, 
+                account=account, 
+                post=post, 
+                is_bookmark=True
+            )
         )
 
         if bookmarked.exists():

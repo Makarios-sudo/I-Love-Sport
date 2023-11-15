@@ -41,26 +41,22 @@ class FriendsSerializer:
             fields = ["id", "followers", "following", "archived", "blocked", "pending_request"]
 
     class Followers(serializers.ModelSerializer):
-        followers = AccountSerializer.PublicRetrieve(many=True)
-
+        followers = AccountSerializer.PublicRetrieve(many=True, )
         class Meta:
             model = v2_models.Friends
-            fields = ["id", "followers_count", "followers"]
+            fields = ["id","followers_count", "followers"]
 
     class Following(serializers.ModelSerializer):
         following = AccountSerializer.PublicRetrieve(many=True)
-
         class Meta:
             model = v2_models.Friends
             fields = ["id", "get_following", "following"]
 
     class Blocked(serializers.ModelSerializer):
         blocked = AccountSerializer.PublicRetrieve(many=True)
-
         class Meta:
             model = v2_models.Friends
             fields = ["id", "get_blocked", "blocked"]
-
 
 class FriendRequestSerializer:
     class SendRequest(serializers.ModelSerializer):
@@ -71,7 +67,7 @@ class FriendRequestSerializer:
     class ListRequest(serializers.ModelSerializer):
         sender = AccountSerializer.PublicRetrieve()
         # pending_requests_count = serializers.SerializerMethodField()
-
+        
         # def get_pending_requests_count(self, obj):
         #     receiver = obj.receiver
         #     return v2_models.FriendRequest.pending_requests_count(receiver)
