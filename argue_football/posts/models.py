@@ -23,11 +23,7 @@ class ClubInterest(BaseModelMixin):
 class Post(BaseModelMixin):
     owner = models.ForeignKey("users.User", on_delete=models.CASCADE, null=True, blank=True)
     account = models.ForeignKey(
-        "users.Account",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="posts"
+        "users.Account", on_delete=models.SET_NULL, null=True, blank=True, related_name="posts"
     )
     body = models.TextField(_("Body"), blank=False, null=False, db_index=True)
     thumbnail = models.JSONField(_("Thumbnail"), default=dict, blank=True, null=True, db_index=True)
@@ -60,19 +56,20 @@ class Post(BaseModelMixin):
 
     @property
     def likes(self, *args, **kwargs) -> int:
-        return PostActivity.objects.filter(post=self, is_like__isnull=False).count()
+        return self.post_engagements.filter(is_like=True).count()
 
     @property
     def comments(self, *args, **kwargs) -> int:
-        return 0.0
+        return self.post_engagements.filter(comment__isnull=False).count()
 
     @property
     def bookmarks(self, *args, **kwargs) -> int:
-        return 0.0
+        return self.post_engagements.filter(is_bookmark=True).count()
 
     @property
     def re_argue(self, *args, **kwargs) -> int:
-        return 0.0
+        return self.post_engagements.filter(is_repost=True).count()
+
 
 class PostActivity(BaseModelMixin):
     owner = models.ForeignKey("users.User", on_delete=models.CASCADE, null=True, blank=True, db_index=True)
@@ -88,6 +85,7 @@ class PostActivity(BaseModelMixin):
     def __str__(self) -> str:
         return self.id
 
+
 class ActivityFeedBack(BaseModelMixin):
     owner = models.ForeignKey("users.User", on_delete=models.CASCADE, null=True, blank=True, db_index=True)
     account = models.ForeignKey("users.Account", on_delete=models.SET_NULL, null=True, blank=True, db_index=True)
@@ -99,6 +97,7 @@ class ActivityFeedBack(BaseModelMixin):
 
     def __str__(self) -> str:
         return self.postactivity.comment
+
 
 class Share(BaseModelMixin):
     owner = models.ForeignKey(

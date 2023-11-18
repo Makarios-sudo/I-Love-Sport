@@ -103,6 +103,23 @@ class PostSerializer:
                 "created_at",
             ]
 
+    class PostFeedRetreive(BaseRetrieve):
+        account = v2_userApp_serializer.AccountSerializer.PublicRetrieve()
+
+        class Meta:
+            model = v2_models.Post
+            fields = [
+                "id",
+                "account",
+                "body",
+                "thumbnail",
+                "likes",
+                "comments",
+                "bookmarks",
+                "re_argue",
+                "created_at",
+            ]
+
 
 class PostActivitySerializer:
     class BaseRetrieve(serializers.ModelSerializer):

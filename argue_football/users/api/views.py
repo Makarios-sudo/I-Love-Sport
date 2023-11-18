@@ -220,7 +220,7 @@ class AccountView(viewsets.ModelViewSet):
         account = get_object_or_404(Account, id=kwargs.get("pk"))
 
         if user != account.owner or not account.isverified:
-            raise custom_exceptions.Forbidden("You do not have permission to perform this action on the given course.")
+            raise custom_exceptions.Forbidden("You do not have permission to perform this action.")
 
         serializer = AccountSerializer.AddInterest(instance=account, data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -241,7 +241,7 @@ class AccountView(viewsets.ModelViewSet):
         account = get_object_or_404(Account, id=kwargs.get("pk"))
 
         if user != account.owner or account.isverified is False:
-            raise custom_exceptions.Forbidden("You do not have permisison to perform this action on the given course.")
+            raise custom_exceptions.Forbidden("You do not have permisison to perform this action.")
 
         serializer = AccountSerializer.UpdateAccount(
             instance=account,
@@ -259,7 +259,7 @@ class AccountView(viewsets.ModelViewSet):
         account = get_object_or_404(Account, id=kwargs.get("pk"))
 
         if user != account.owner or account.isverified is False:
-            raise custom_exceptions.Forbidden("You do not have permisison to perform this action on the given course.")
+            raise custom_exceptions.Forbidden("You do not have permisison to perform this action.")
 
         serializer = AccountSerializer.UpdateBusiness(
             instance=account,

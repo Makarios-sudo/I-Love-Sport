@@ -45,12 +45,12 @@ class Friends(BaseModelMixin):
         pass
 
     @property
-    def get_followers(self) -> list:
-        return self.followers.all()
+    def get_followers_id(self) -> list:
+        return self.followers.values_list("id", flat=True)
 
     @property
-    def get_following(self) -> list:
-        return self.following.all().count()
+    def get_following_id(self) -> list:
+        return self.following.values_list("id", flat=True)
 
     @property
     def get_blocked(self) -> list:

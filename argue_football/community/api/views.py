@@ -139,8 +139,10 @@ class FriendsViewSet(viewsets.ModelViewSet):
         if receiver.settings.get("make_private") is True:
             receiver.new_request(account)
             return Response(
-                f"Your friend request has been sent to {receiver.owner.name}. "
-                "You will be added when this account accepts your invite."
+                {
+                    "message": f"Your friend request has been sent to {receiver.owner.name}. "
+                    "You will be added when this account accepts your invite."
+                }
             )
 
         try:
@@ -149,11 +151,11 @@ class FriendsViewSet(viewsets.ModelViewSet):
             raise custom_exceptions.Forbidden("You do not have permission to perform this action.")
 
         if receiver in qs.following.all():
-            raise custom_exceptions.Forbidden(f"You are already following {receiver.full_name}.")
+            raise custom_exceptions.Forbidden({"message": f"You are already following {receiver.full_name}."})
 
         account.add_new_following(receiver)
         receiver.add_new_followers(account)
-        return Response(f"You are now following {receiver.owner.name}")
+        return Response({"message": f"You are now following {receiver.owner.name}"})
 
     @action(methods=["POST"], detail=True, permission_classes=[IsAuthenticated])
     def accept_request(self, request, *args, **kwargs):
@@ -174,7 +176,9 @@ class FriendsViewSet(viewsets.ModelViewSet):
 
         account.add_new_followers(sender_account)
         sender_account.add_new_following(account)
-        return Response(f"you accepted {pending_request.sender.owner.name}'s and is now added to your followers.")
+        return Response(
+            {"message": f"you accepted {pending_request.sender.owner.name}'s and is now added to your followers."}
+        )
 
     @action(methods=["DELETE"], detail=True, permission_classes=[IsAuthenticated])
     def decline_request(self, request, *args, **kwargs):
@@ -190,7 +194,7 @@ class FriendsViewSet(viewsets.ModelViewSet):
         return Response(f"You declined {pending_request.sender.owner.name}'s request.")
 
     @action(methods=["PUT"], detail=True, permission_classes=[IsAuthenticated])
-    def blocking(self, request, *args, **kwargs):
+    def block_unblock_toggle(self, request, *args, **kwargs):
         user: User = self.request.user
         account: Account = getattr(user, "accounts").first()
         to_block = get_object_or_404(Account, id=kwargs.get("pk"))
@@ -203,38 +207,26 @@ class FriendsViewSet(viewsets.ModelViewSet):
         except v2_model.Friends.DoesNotExist:
             raise custom_exceptions.Forbidden("You do not have permission to perform this action.")
 
-        if to_block not in qs.followers.all() or to_block not in qs.following.all():
-            raise custom_exceptions.Forbidden(f"{to_block.full_name} is not among your followers or following")
-        account.block_account(to_block)
-        return Response(f"You have block {to_block.full_name.capitalize()}")
+        if to_block not in qs.followers.all() and to_block not in qs.blocked.all():
+            raise custom_exceptions.Forbidden(f"{to_block.full_name} is not among your followers")
+
+        if to_block not in qs.blocked.all():
+            qs.followers.remove(to_block)
+            qs.blocked.add(to_block)
+            qs.save()
+            return Response({"message": f"You have block {to_block.full_name.capitalize()}"})
+        qs.blocked.remove(to_block)
+        qs.followers.add(to_block)
+        qs.save()
+        return Response({"message": f"You have unblock {to_block.full_name.capitalize()}"})
 
     @action(methods=["PUT"], detail=True, permission_classes=[IsAuthenticated])
-    def unblocking(self, request, *args, **kwargs):
+    def follow_unfollow_toggle(self, request, *args, **kwargs):
         user: User = self.request.user
         account: Account = getattr(user, "accounts").first()
-        to_unblock = get_object_or_404(Account, id=kwargs.get("pk"))
+        to_follow_unfollow = get_object_or_404(Account, id=kwargs.get("pk"))
 
-        if not account.isverified and not to_unblock.isverified:
-            raise custom_exceptions.Forbidden("You do not have permission to perform this action.")
-
-        try:
-            qs = v2_model.Friends.objects.get(owner=user, account=account)
-        except v2_model.Friends.DoesNotExist:
-            raise custom_exceptions.Forbidden("You do not have permission to perform this action.")
-
-        if to_unblock not in qs.blocked.all():
-            raise custom_exceptions.Forbidden("You can only unblock an account that was blocked")
-
-        account.unblock_account(to_unblock)
-        return Response(f"You have unblock {to_unblock.full_name.capitalize()}")
-
-    @action(methods=["DELETE"], detail=True, permission_classes=[IsAuthenticated])
-    def unfollow(self, request, *args, **kwargs):
-        user: User = self.request.user
-        account: Account = getattr(user, "accounts").first()
-        to_unfollow = get_object_or_404(Account, id=kwargs.get("pk"))
-
-        if not account.isverified and not to_unfollow.isverified:
+        if not account.isverified and not to_follow_unfollow.isverified:
             raise custom_exceptions.Forbidden("You do not have permission to perform this action.")
 
         try:
@@ -242,12 +234,23 @@ class FriendsViewSet(viewsets.ModelViewSet):
         except v2_model.Friends.DoesNotExist:
             raise custom_exceptions.Forbidden("Nothing Found")
 
-        if to_unfollow not in qs.following.all():
-            raise custom_exceptions.Forbidden("You can only unfollow an account that you are following.")
+        if to_follow_unfollow.settings.get("make_private") is True:
+            return Response({"message": "This account is private, send a friend request"})
 
-        qs.following.remove(to_unfollow)
-        
-        return Response(f"You have Unfollowed {to_unfollow.full_name}")
+        if to_follow_unfollow not in qs.following.all():
+            qs.following.add(to_follow_unfollow)
+            qs.save()
+            return Response({"message": f"You are now following {to_follow_unfollow.full_name}"})
+        qs.following.remove(to_follow_unfollow)
+        qs.save()
+        return Response({"message": f"You unfollowed {to_follow_unfollow.full_name}"})
+
+        # if to_unfollow not in qs.following.all():
+        #     raise custom_exceptions.Forbidden("You can only unfollow an account that you are following.")
+
+        # qs.following.remove(to_unfollow)
+
+        # return Response({"message":f"You have Unfollowed {to_unfollow.full_name}"})
 
     @action(methods=["GET"], detail=False, permission_classes=[IsAuthenticated])
     def suggest(self, request, *args, **kwargs):

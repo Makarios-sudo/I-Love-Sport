@@ -125,12 +125,6 @@ class Account(BaseModelMixin):
     def get_posts(self):
         return self.posts.order_by("-created_at")[:10]
 
-    def get_folllowers(self):
-        return self.friends.all()[:10]
-
-    def get_folllowing(self):
-        return self.friends.all()[:10]
-
     def verified(self: "Account"):
         return self.isverified is True
 
@@ -174,6 +168,3 @@ class Account(BaseModelMixin):
         unblocking, created = v2_models.Friends.objects.get_or_create(owner=self.owner, account=self)
         unblocking.blocked.remove(to_unblock_account)
         return unblocking
-
-    # def followers(self: "Account", *args, **kwargs):
-    #     return self.

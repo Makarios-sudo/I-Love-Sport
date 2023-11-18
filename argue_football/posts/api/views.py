@@ -1,9 +1,11 @@
 from django.db.models import Count, Q
-from rest_framework import viewsets
+from django.shortcuts import get_object_or_404
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework import status
+
+from argue_football.community.models import Friends
 from argue_football.posts import models as v2_model
 from argue_football.posts.api import serializers as v2_serializers
 from argue_football.users import custom_exceptions
@@ -15,21 +17,20 @@ class ClubInterestViewSet(viewsets.ModelViewSet):
     queryset = v2_model.ClubInterest.objects.all()
     serializer_class = v2_serializers.ClubInterestSerializer.BaseRetrieve
     permission_classes = [IsAuthenticated | IsAdminUser]
-    http_method_names = ['get', 'post']
+    http_method_names = ["get", "post"]
 
     def create(self, request, *args, **kwargs):
         user: User = self.request.user
 
         if not user.is_superuser:
             return Response(
-                data={"detail": "You do not have permission to perform this action."},
-                status=status.HTTP_403_FORBIDDEN
+                data={"detail": "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN
             )
-            
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         return Response(data=serializer.data)
-        
+
 
 class PostViewSet(viewsets.ModelViewSet):
     queryset = v2_model.Post.objects.all()
@@ -81,6 +82,38 @@ class PostViewSet(viewsets.ModelViewSet):
             )
         else:
             return Response(data=serializer.errors)
+
+    @action(methods=["GET"], detail=False, permission_classes=[IsAuthenticated])
+    def my_feeds(self, request, *args, **kwargs):
+        user: User = self.request.user
+        account: Account = getattr(user, "accounts").first()
+
+        if not account.isverified:
+            raise custom_exceptions.Forbidden("You do not have permission to perform this action.")
+
+        followers_following_ids = Friends.objects.filter(owner=user, account=account).first()
+
+        if not followers_following_ids:
+            raise custom_exceptions.Forbidden("You do not have any followers or followings to view their posts ")
+
+        followers_ids = followers_following_ids.get_followers_id
+        following_ids = followers_following_ids.get_following_id
+
+        all_user_ids = make_distinct(
+            Account.objects.filter(Q(id__in=followers_ids) | Q(id__in=following_ids))
+        ).values_list("owner__id", flat=True)
+
+        post_feeds = make_distinct(
+            v2_model.Post.objects.filter(
+                Q(owner__in=all_user_ids) | Q(account__in=followers_ids) | Q(account__in=following_ids)
+            )
+        ).order_by("-created_at")
+
+        post_feeds_qs = self.paginate_queryset(post_feeds)
+
+        return self.get_paginated_response(
+            v2_serializers.PostSerializer.PostFeedRetreive(post_feeds_qs, many=True).data
+        )
 
     @action(methods=["GET"], detail=False, permission_classes=[IsAuthenticated])
     def get_reposts(self, request, *args, **kwargs):
@@ -145,70 +178,50 @@ class PostViewSet(viewsets.ModelViewSet):
         qs = self.paginate_queryset(reposts)
         return self.get_paginated_response(v2_serializers.PostActivitySerializer.BaseRetrieve(qs, many=True).data)
 
-    @action(methods=["POST"], detail=False, permission_classes=[IsAuthenticated])
+    @action(methods=["POST"], detail=True, permission_classes=[IsAuthenticated])
     def bookmark_unbookmark(self, request, *args, **kwargs):
         user: User = self.request.user
         account: Account = getattr(user, "accounts").first()
-        serializer = v2_serializers.PostActivitySerializer.Repost(
-            data=request.data,
-        )
+        to_bookmark = get_object_or_404(v2_model.Post, id=kwargs.get("pk"))
 
         if not account.isverified:
             raise custom_exceptions.Forbidden("You do not have permission to perform this action.")
 
-        serializer.is_valid(raise_exception=True)
-        post = serializer.validated_data.get("post")
-
-        if post.owner == user or post.account == account:
+        if to_bookmark.owner == user or to_bookmark.account == account:
             raise custom_exceptions.Forbidden("You can not bookmark your own post.")
 
         bookmarked = make_distinct(
-            v2_model.PostActivity.objects.filter(
-                owner=user, 
-                account=account, 
-                post=post, 
-                is_bookmark=True
-            )
-        )
+            v2_model.PostActivity.objects.filter(owner=user, account=account, post=to_bookmark)
+        ).first()
 
-        if bookmarked.exists():
-            bookmarked.delete()
-            return Response("You unbookmark this post")
+        if bookmarked and bookmarked.is_bookmark is True:
+            bookmarked.is_bookmark = False
+            bookmarked.save()
+            return Response({"message": "You unbookmark this post"})
 
-        bookmarked = v2_model.PostActivity.objects.create(owner=user, account=account, post=post, is_bookmark=True)
-        return Response(
-            {"repost": v2_serializers.PostSerializer.BaseRetrieve(post).data, "message": "Bookmark Successful"}
-        )
+        v2_model.PostActivity.objects.create(owner=user, account=account, post=to_bookmark, is_bookmark=True)
 
-    @action(methods=["POST"], detail=False, permission_classes=[IsAuthenticated])
+        return Response({"message": "Bookmark Successful"})
+
+    @action(methods=["POST"], detail=True, permission_classes=[IsAuthenticated])
     def like_unlike_post(self, request, *args, **kwargs):
         user: User = self.request.user
         account: Account = getattr(user, "accounts").first()
-        serializer = v2_serializers.PostActivitySerializer.LikeUnlikePost(
-            data=request.data,
-        )
+        to_like = get_object_or_404(v2_model.Post, id=kwargs.get("pk"))
 
         if not account.isverified:
             raise custom_exceptions.Forbidden("You do not have permission to perform this action.")
 
-        serializer.is_valid(raise_exception=True)
-        post = serializer.validated_data.get("post")
+        liked = make_distinct(v2_model.PostActivity.objects.filter(owner=user, account=account, post=to_like)).first()
 
-        liked_post = make_distinct(
-            v2_model.PostActivity.objects.filter(
-                owner=user,
-                account=account,
-                post=post,
-                is_like=True,
-            )
-        )
+        if liked and liked.is_like is True:
+            liked.is_like = False
+            liked.save()
+            return Response({"message": "You unlike this post"})
 
-        if liked_post.exists():
-            liked_post.delete()
-            return Response("You unlike this post")
+        v2_model.PostActivity.objects.create(owner=user, account=account, post=to_like, is_like=True)
 
-        v2_model.PostActivity.objects.create(owner=user, post=post, account=account, is_like=True)
-        return Response("You like this post")
+        return Response({"message": "you like this post"})
 
     @action(methods=["POST"], detail=False, permission_classes=[IsAuthenticated])
     def comment(self, request, *args, **kwargs):
